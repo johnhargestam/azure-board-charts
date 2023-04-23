@@ -10,6 +10,7 @@
 Create folders in the `migrations` folder, with `up.sql` and `down.sql` files.
 
 Commands:
+
 - `yarn knex migrate:list` - list all migrations
 - `yarn knex migrate:up` - apply next migration
 - `yarn knex migrate:down` - rollback last migration

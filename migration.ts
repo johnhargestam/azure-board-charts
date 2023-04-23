@@ -10,7 +10,7 @@ interface SqlMigration {
 const getMigrations = (): Promise<SqlMigration[]> =>
   fs.readdir('migrations').then(folders =>
     folders.map(folder => ({
-      file: folder, //migrate:list support
+      file: path.join(folder, 'up.sql'),
       folder,
     })),
   );
