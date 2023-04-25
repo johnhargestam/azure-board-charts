@@ -1,1 +1,1 @@
-DROP VIEW [work_item_column];
+DROP VIEW work_item_board_column;

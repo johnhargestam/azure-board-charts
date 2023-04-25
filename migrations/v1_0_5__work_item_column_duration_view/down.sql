@@ -1,1 +1,1 @@
-DROP VIEW [work_item_column_duration];
+DROP VIEW work_item_board_column_duration;

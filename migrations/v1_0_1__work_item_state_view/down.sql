@@ -1,1 +1,1 @@
-DROP VIEW [work_item_state];
+DROP VIEW work_item_state;

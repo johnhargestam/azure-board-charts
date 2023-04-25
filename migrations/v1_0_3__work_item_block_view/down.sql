@@ -1,1 +1,1 @@
-DROP VIEW [work_item_block];
+DROP VIEW work_item_block;
