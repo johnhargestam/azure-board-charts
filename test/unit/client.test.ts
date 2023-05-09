@@ -2,39 +2,29 @@ import { TestScheduler } from 'rxjs/testing';
 import { of } from 'rxjs';
 import client from '~/src/api/client';
 
-jest.mock('~/env', () => ({}))
-
-const getBoardsMock = jest.fn(() => of(['1', '2', '3'].map(id => ({ id }))));
-
-const getBoardMock = jest.fn((_, id: string) =>
-  of({
-    id,
-    name: `Board ${id}`,
-    url: `https://dev.azure.com/org/project/_boards/board/${id}`,
-  }),
-);
-
-jest.mock('azure-devops-node-api', () => ({
-  WebApi: jest.fn(() => ({
-    getWorkApi: jest.fn(() =>
-      of({
-        getBoards: getBoardsMock,
-        getBoard: getBoardMock,
-      }),
-    ),
-  })),
-  getPersonalAccessTokenHandler: jest.fn(),
-}));
-
 describe('client', () => {
   const scheduler = new TestScheduler((actual, expected) => {
     expect(actual).toStrictEqual(expected);
   });
 
   it('fetches boards from azure', () => {
-    scheduler.run(({ expectObservable }) => {
+    const boardReferencesMock = jest.fn(() =>
+      of(['1', '2', '3'].map(id => ({ id }))),
+    );
+    const boardMock = jest.fn((id: string) =>
+      of({
+        id,
+        name: `Board ${id}`,
+        url: `https://dev.azure.com/org/project/_boards/board/${id}`,
+      }),
+    );
+    const apiMock = {
+      boardReferences: boardReferencesMock,
+      board: boardMock,
+    };
 
-      const boards = client.getBoards();
+    scheduler.run(({ expectObservable }) => {
+      const boards = client(apiMock).boards();
 
       expectObservable(boards).toBe('(abc|)', {
         a: {
@@ -54,8 +44,8 @@ describe('client', () => {
         },
       });
     });
-    
-    expect(getBoardsMock).toHaveBeenCalledTimes(1);
-    expect(getBoardMock).toHaveBeenCalledTimes(3);
+
+    expect(boardReferencesMock).toHaveBeenCalledTimes(1);
+    expect(boardMock).toHaveBeenCalledTimes(3);
   });
 });
