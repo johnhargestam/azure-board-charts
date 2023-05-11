@@ -1,9 +1,4 @@
-export enum WorkItemType {
-  Bug = 'Bug',
-  Epic = 'Epic',
-  Feature = 'Feature',
-  PBI = 'Product Backlog Item',
-}
+import { WorkItemType } from '~/src/azure/api';
 
 export enum StateCategory {
   Proposed = 'Proposed',
