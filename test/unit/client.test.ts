@@ -8,10 +8,10 @@ describe('client', () => {
   });
 
   it('fetches boards from azure', () => {
-    const boardReferencesMock = jest.fn(() =>
+    const getBoardReferences = jest.fn(() =>
       of([{ id: '1st' }, { id: '2nd' }, { id: '3rd' }]),
     );
-    const boardMock = jest.fn((id: string) =>
+    const getBoard = jest.fn((id: string) =>
       of({
         id,
         name: `${id} Board`,
@@ -19,13 +19,13 @@ describe('client', () => {
       }),
     );
     const apiMock = {
-      boardReferences: boardReferencesMock,
-      board: boardMock,
-      revisions: jest.fn(),
+      getBoardReferences,
+      getBoard,
+      getRevisions: jest.fn(),
     };
 
     scheduler.run(({ expectObservable }) => {
-      const boards = client(apiMock).boards();
+      const boards = client(apiMock).getBoards();
 
       expectObservable(boards).toBe('(abc|)', {
         a: {
@@ -46,14 +46,14 @@ describe('client', () => {
       });
     });
 
-    expect(boardReferencesMock).toHaveBeenCalledTimes(1);
-    expect(boardMock).nthCalledWith(1, '1st');
-    expect(boardMock).nthCalledWith(2, '2nd');
-    expect(boardMock).nthCalledWith(3, '3rd');
+    expect(getBoardReferences).toHaveBeenCalledTimes(1);
+    expect(getBoard).nthCalledWith(1, '1st');
+    expect(getBoard).nthCalledWith(2, '2nd');
+    expect(getBoard).nthCalledWith(3, '3rd');
   });
 
   it('fetches revisions from azure', () => {
-    const revisionsMock = jest
+    const getRevisions = jest
       .fn()
       .mockImplementationOnce(() =>
         of({
@@ -86,14 +86,14 @@ describe('client', () => {
         }),
       );
     const apiMock = {
-      boardReferences: jest.fn(),
-      board: jest.fn(),
-      revisions: revisionsMock,
+      getBoardReferences: jest.fn(),
+      getBoard: jest.fn(),
+      getRevisions,
     };
     const from = new Date('1970-01-01');
 
     scheduler.run(({ expectObservable }) => {
-      const revisions = client(apiMock).revisions(from);
+      const revisions = client(apiMock).getRevisions(from);
 
       expectObservable(revisions).toBe('(ab|)', {
         a: {
@@ -125,8 +125,8 @@ describe('client', () => {
       });
     });
 
-    expect(revisionsMock).toHaveBeenCalledTimes(2);
-    expect(revisionsMock).nthCalledWith(1, expect.anything(), undefined);
-    expect(revisionsMock).nthCalledWith(2, expect.anything(), '1stToken');
+    expect(getRevisions).toHaveBeenCalledTimes(2);
+    expect(getRevisions).nthCalledWith(1, expect.anything(), undefined);
+    expect(getRevisions).nthCalledWith(2, expect.anything(), '1stToken');
   });
 });
