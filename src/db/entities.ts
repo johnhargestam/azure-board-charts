@@ -1,17 +1,4 @@
-import { WorkItemType } from '~/src/azure/api';
-
-export enum StateCategory {
-  Proposed = 'Proposed',
-  InProgress = 'InProgress',
-  Completed = 'Completed',
-  Removed = 'Removed',
-}
-
-export enum ColumnType {
-  Incoming = 'incoming',
-  InProgress = 'inProgress',
-  Outgoing = 'outgoing',
-}
+import { WorkItemType, StateCategory } from '~/src/azure/models';
 
 export interface ContinuationToken {
   id: number;
@@ -48,7 +35,7 @@ export interface Board {
 }
 
 export interface BoardColumn {
-  id: number;
+  id: string;
   name: string;
   done: boolean;
   itemLimit: number;
@@ -57,7 +44,7 @@ export interface BoardColumn {
 }
 
 export interface BoardColumnStateMapping {
-  boardColumnId: number;
+  boardColumnId: string;
   stateId: number;
   workItemType: WorkItemType;
 }

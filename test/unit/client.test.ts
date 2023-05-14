@@ -1,6 +1,11 @@
 import { TestScheduler } from 'rxjs/testing';
 import { of } from 'rxjs';
 import client from '~/src/azure/client';
+import {
+  createBoard,
+  createBoardReference,
+  createWorkItem,
+} from '~/test/fixtures/api';
 
 describe('client', () => {
   const scheduler = new TestScheduler((actual, expected) => {
@@ -9,40 +14,24 @@ describe('client', () => {
 
   it('fetches boards from azure', () => {
     const getBoardReferences = jest.fn(() =>
-      of([{ id: '1st' }, { id: '2nd' }, { id: '3rd' }]),
+      of(['1st', '2nd', '3rd'].map(createBoardReference)),
     );
-    const getBoard = jest.fn((id: string) =>
-      of({
-        id,
-        name: `${id} Board`,
-        url: `https://dev.azure.com/org/project/_boards/board/${id}`,
-      }),
-    );
+    const getBoard = jest.fn((id: string) => of(createBoard(id)));
     const apiMock = {
       getBoardReferences,
       getBoard,
       getRevisions: jest.fn(),
     };
 
+    //fix mocks with functions for correct types
+    //maximize optional parameters in zod types
     scheduler.run(({ expectObservable }) => {
       const boards = client(apiMock).getBoards();
 
       expectObservable(boards).toBe('(abc|)', {
-        a: {
-          id: '1st',
-          name: '1st Board',
-          url: 'https://dev.azure.com/org/project/_boards/board/1st',
-        },
-        b: {
-          id: '2nd',
-          name: '2nd Board',
-          url: 'https://dev.azure.com/org/project/_boards/board/2nd',
-        },
-        c: {
-          id: '3rd',
-          name: '3rd Board',
-          url: 'https://dev.azure.com/org/project/_boards/board/3rd',
-        },
+        a: createBoard('1st'),
+        b: createBoard('2nd'),
+        c: createBoard('3rd'),
       });
     });
 
@@ -57,32 +46,16 @@ describe('client', () => {
       .fn()
       .mockImplementationOnce(() =>
         of({
-          isLastBatch: false,
+          values: [createWorkItem(1)],
           continuationToken: '1stToken',
-          values: [
-            {
-              id: 1,
-              fields: {
-                'System.Id': '1',
-                'System.Title': 'First Item',
-              },
-            },
-          ],
+          isLastBatch: false,
         }),
       )
       .mockImplementation(() =>
         of({
-          isLastBatch: true,
+          values: [createWorkItem(2)],
           continuationToken: '2ndToken',
-          values: [
-            {
-              id: 2,
-              fields: {
-                'System.Id': '2',
-                'System.Title': 'Second Item',
-              },
-            },
-          ],
+          isLastBatch: true,
         }),
       );
     const apiMock = {
@@ -93,34 +66,16 @@ describe('client', () => {
     const from = new Date('1970-01-01');
 
     scheduler.run(({ expectObservable }) => {
-      const revisions = client(apiMock).getRevisions(from);
+      const revisions = client(apiMock).getLatestRevisions(from);
 
       expectObservable(revisions).toBe('(ab|)', {
         a: {
-          isLastBatch: false,
+          values: [createWorkItem(1)],
           continuationToken: '1stToken',
-          values: [
-            {
-              id: 1,
-              fields: {
-                'System.Id': '1',
-                'System.Title': 'First Item',
-              },
-            },
-          ],
         },
         b: {
-          isLastBatch: true,
+          values: [createWorkItem(2)],
           continuationToken: '2ndToken',
-          values: [
-            {
-              id: 2,
-              fields: {
-                'System.Id': '2',
-                'System.Title': 'Second Item',
-              },
-            },
-          ],
         },
       });
     });
