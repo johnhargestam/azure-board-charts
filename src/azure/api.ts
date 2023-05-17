@@ -1,17 +1,14 @@
 import { WebApi, getPersonalAccessTokenHandler } from 'azure-devops-node-api';
 import { Observable, concatMap, defer, map } from 'rxjs';
+import z from 'zod';
 import {
   Api,
   Board,
   BoardReference,
-  BoardReferenceSchema,
-  BoardSchema,
-  Field,
-  ReportingWorkItemRevisionsBatchSchema,
+  ColumnType,
   StreamedBatch,
   WorkItem,
   WorkItemType,
-  toWorkItem,
 } from './models';
 
 interface Config {
@@ -21,6 +18,96 @@ interface Config {
   team: string;
   area: string;
 }
+
+export const BoardReferencesSchema = z.array(
+  z.object({
+    id: z.string(),
+  }),
+);
+
+enum BoardColumnType {
+  Incoming = 0,
+  InProgress = 1,
+  Outgoing = 2,
+}
+
+enum Field {
+  AreaPath = 'System.AreaPath',
+  Title = 'System.Title',
+  WorkItemType = 'System.WorkItemType',
+  Tags = 'System.Tags',
+  CreatedDate = 'System.CreatedDate',
+  ChangedDate = 'System.ChangedDate',
+  State = 'System.State',
+  BoardColumn = 'System.BoardColumn',
+  BoardColumnDone = 'System.BoardColumnDone',
+}
+
+const BoardColumnSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  columnType: z
+    .nativeEnum(BoardColumnType)
+    .transform(
+      t => [ColumnType.Incoming, ColumnType.InProgress, ColumnType.Outgoing][t],
+    ),
+  isSplit: z.boolean().default(false),
+  itemLimit: z.number().min(0).default(0),
+  stateMappings: z.record(z.nativeEnum(WorkItemType), z.string()),
+});
+
+const BoardSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  columns: z.array(BoardColumnSchema),
+  allowedMappings: z.record(
+    z.nativeEnum(ColumnType),
+    z.record(z.nativeEnum(WorkItemType), z.array(z.string())),
+  ),
+});
+
+const WorkItemSchema = z
+  .object({
+    id: z.number(),
+    fields: z.object({
+      [Field.AreaPath]: z.string(),
+      [Field.Title]: z.string(),
+      [Field.WorkItemType]: z.nativeEnum(WorkItemType),
+      [Field.CreatedDate]: z.string().transform(date => new Date(date)),
+      [Field.ChangedDate]: z.string().transform(date => new Date(date)),
+      [Field.State]: z.string(),
+      [Field.BoardColumn]: z.string().optional(),
+      [Field.BoardColumnDone]: z.boolean().default(false),
+      [Field.Tags]: z
+        .string()
+        .optional()
+        .transform(tags => (tags ? tags.split('; ') : [])),
+    }),
+  })
+  .transform(
+    ({ id, fields }): WorkItem => ({
+      id,
+      areaPath: fields[Field.AreaPath],
+      title: fields[Field.Title],
+      type: fields[Field.WorkItemType],
+      created: fields[Field.CreatedDate],
+      changed: fields[Field.ChangedDate],
+      state: fields[Field.State],
+      tags: fields[Field.Tags],
+      boardColumn: fields[Field.BoardColumn]
+        ? {
+            name: fields[Field.BoardColumn],
+            done: fields[Field.BoardColumnDone],
+          }
+        : undefined,
+    }),
+  );
+
+const ReportingWorkItemRevisionsBatchSchema = z.object({
+  values: z.array(WorkItemSchema),
+  continuationToken: z.string(),
+  isLastBatch: z.boolean(),
+});
 
 const types = [
   WorkItemType.Bug,
@@ -55,7 +142,7 @@ const getBoardReferences =
   (): Observable<BoardReference[]> =>
     workApi(url, pat).pipe(
       concatMap(api => api.getBoards({ project, team })),
-      map(refs => refs.map(ref => BoardReferenceSchema.parse(ref))),
+      map(references => BoardReferencesSchema.parse(references)),
     );
 
 const getBoard =
@@ -66,7 +153,7 @@ const getBoard =
       map(board => BoardSchema.parse(board)),
     );
 
-const getRevisions =
+const getRevisionsBatch =
   ({ url, pat, project }: Config) =>
   (from: Date, token?: string): Observable<StreamedBatch<WorkItem>> =>
     trackingApi(url, pat).pipe(
@@ -74,17 +161,12 @@ const getRevisions =
         api.readReportingRevisionsPost({ types, fields }, project, token, from),
       ),
       map(batch => ReportingWorkItemRevisionsBatchSchema.parse(batch)),
-      map(({ values, continuationToken, isLastBatch }) => ({
-        values: values.map(toWorkItem),
-        continuationToken,
-        isLastBatch,
-      })),
     );
 
 const api = (config: Config): Api => ({
   getBoardReferences: getBoardReferences(config),
   getBoard: getBoard(config),
-  getRevisions: getRevisions(config),
+  getRevisionsBatch: getRevisionsBatch(config),
 });
 
 export default api;

@@ -1,5 +1,5 @@
 import { EMPTY, concatMap, expand, map, mergeAll } from 'rxjs';
-import { Api, Client } from './models';
+import type { Api, Client } from './models';
 
 const getAllBoards = (api: Api) => () =>
   api.getBoardReferences().pipe(
@@ -8,16 +8,16 @@ const getAllBoards = (api: Api) => () =>
   );
 
 const getAllRevisions = (api: Api) => (from: Date, token?: string) =>
-  api.getRevisions(from, token).pipe(
+  api.getRevisionsBatch(from, token).pipe(
     expand(({ isLastBatch, continuationToken }) =>
-      isLastBatch ? EMPTY : api.getRevisions(from, continuationToken),
+      isLastBatch ? EMPTY : api.getRevisionsBatch(from, continuationToken),
     ),
     map(({ values, continuationToken }) => ({ values, continuationToken })),
   );
 
 const client = (api: Api): Client => ({
   getBoards: getAllBoards(api),
-  getLatestRevisions: getAllRevisions(api),
+  getLatestRevisionsBatches: getAllRevisions(api),
 });
 
 export default client;

@@ -1,18 +1,14 @@
 import { TestScheduler } from 'rxjs/testing';
 import { of } from 'rxjs';
 import client from '~/src/azure/client';
-import {
-  createBoard,
-  createBoardReference,
-  createWorkItem,
-} from '~/test/fixtures/api';
+import { createBoard, createBoardReference, createWorkItem } from './fixtures';
 
 describe('client', () => {
   const scheduler = new TestScheduler((actual, expected) => {
     expect(actual).toStrictEqual(expected);
   });
 
-  it('fetches boards from azure', () => {
+  it('fetches all boards', () => {
     const getBoardReferences = jest.fn(() =>
       of(['1st', '2nd', '3rd'].map(createBoardReference)),
     );
@@ -20,11 +16,9 @@ describe('client', () => {
     const apiMock = {
       getBoardReferences,
       getBoard,
-      getRevisions: jest.fn(),
+      getRevisionsBatch: jest.fn(),
     };
 
-    //fix mocks with functions for correct types
-    //maximize optional parameters in zod types
     scheduler.run(({ expectObservable }) => {
       const boards = client(apiMock).getBoards();
 
@@ -41,8 +35,8 @@ describe('client', () => {
     expect(getBoard).nthCalledWith(3, '3rd');
   });
 
-  it('fetches revisions from azure', () => {
-    const getRevisions = jest
+  it('fetches latest revision batches', () => {
+    const getRevisionsBatch = jest
       .fn()
       .mockImplementationOnce(() =>
         of({
@@ -61,12 +55,12 @@ describe('client', () => {
     const apiMock = {
       getBoardReferences: jest.fn(),
       getBoard: jest.fn(),
-      getRevisions,
+      getRevisionsBatch,
     };
     const from = new Date('1970-01-01');
 
     scheduler.run(({ expectObservable }) => {
-      const revisions = client(apiMock).getLatestRevisions(from);
+      const revisions = client(apiMock).getLatestRevisionsBatches(from);
 
       expectObservable(revisions).toBe('(ab|)', {
         a: {
@@ -80,8 +74,8 @@ describe('client', () => {
       });
     });
 
-    expect(getRevisions).toHaveBeenCalledTimes(2);
-    expect(getRevisions).nthCalledWith(1, expect.anything(), undefined);
-    expect(getRevisions).nthCalledWith(2, expect.anything(), '1stToken');
+    expect(getRevisionsBatch).toHaveBeenCalledTimes(2);
+    expect(getRevisionsBatch).nthCalledWith(1, expect.anything(), undefined);
+    expect(getRevisionsBatch).nthCalledWith(2, expect.anything(), '1stToken');
   });
 });
