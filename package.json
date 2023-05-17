@@ -9,7 +9,7 @@
     "db:down": "docker compose -f db/docker-compose.yml down",
     "format": "prettier -w .",
     "serve": "concurrently \"tsc --watch\" \"nodemon -q dist/app.js\"",
-    "test:db": "yarn db:up && jest ./test/integration --runInBand ; yarn db:down",
+    "test:db": "yarn db:up && jest ./test/db --runInBand ; yarn db:down",
     "test": "jest ./test/unit"
   },
   "dependencies": {
